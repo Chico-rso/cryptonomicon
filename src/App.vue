@@ -1,5 +1,14 @@
 <template>
 	<div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
+		<div class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center"
+		     v-if="false">
+			<svg class="animate-spin -ml-1 mr-3 h-12 w-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+			     viewBox="0 0 24 24">
+				<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+				<path class="opacity-75" fill="currentColor"
+				      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+			</svg>
+		</div>
 		<div class="container">
 			<section>
 				<div class="flex">
@@ -15,28 +24,21 @@
 								placeholder="Например DOGE"
 								v-model="ticker"
 								@keydown.enter="addTicker"
+								@input="getTickersCoincidence()"
 							/>
 						</div>
-						<div class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
-						>
-			            <span
-				            class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-			              BTC
-			            </span>
-							<span
-								class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-			              DOGE
-			            </span>
-							<span
-								class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-			              BCH
-			            </span>
-							<span
-								class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer">
-			              CHD
-			            </span>
+						{{tickersNames}}
+						<div v-if="Object.values(tickersNames).length" class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
+				            <span
+					            class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
+					            v-for="coincidence in tickersNames"
+					            :key="coincidence.id"
+					            @click="addCoincidenceTicker(coincidence.Symbol)"
+				            >
+					            {{ coincidence.Symbol }}
+				            </span>
 						</div>
-						<div class="text-sm text-red-600">Такой тикер уже добавлен</div>
+						<div class="text-sm text-red-600" v-if='showNotification'>Такой тикер уже добавлен</div>
 					</div>
 				</div>
 				<button
@@ -102,7 +104,7 @@
 				</dl>
 				<hr class="w-full border-t border-gray-600 my-4"/>
 			</template>
-			<section v-if="sel" class="relative" >
+			<section v-if="sel" class="relative">
 				<h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
 					{{ sel.name }} - USD
 				</h3>
@@ -157,11 +159,23 @@ export default {
 			ticker: null,
 			tickers: [],
 			sel: null,
-			graph:[],
+			graph: [],
+			tickersNames: [],
+			showNotification: false,
 		}
 	},
 	methods:
 		{
+			async getTickersCoincidence()
+			{
+				const response = await fetch(`https://min-api.cryptocompare.com/data/all/coinlist?summary=true`);
+				const data = await response.json();
+
+				this.tickersNames = Object.values(data.Data).filter((item) =>
+				{
+					return item.Symbol.toLowerCase().includes(this.ticker.toLowerCase().trim().slice(0, 3));
+				}).slice(0, 4);
+			},
 			async addTicker()
 			{
 				const currentTicker = {
@@ -171,20 +185,39 @@ export default {
 
 				this.tickers.push(currentTicker);
 
-				setInterval(async () =>{
+				setInterval(async () =>
+				{
 					const response = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=e25e7ecea7cad5e56abf8a869298c3fc99dddca767e2bd5746787d88027e8562`);
 					const data = await response.json();
 					this.tickers.find(ticker => ticker.name === currentTicker.name).price =
 						data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
 
-					if(this.sel?.name === currentTicker.name)
+					if (this.sel?.name === currentTicker.name)
 					{
 						this.graph.push(data.USD);
 					}
 				}, 3000);
 
-
 				this.ticker = '';
+				this.tickersNames = [];
+			},
+			addCoincidenceTicker(ticker)
+			{
+
+				if(this.tickers.find(item => item.name === ticker))
+				{
+					this.showNotification = true;
+					setTimeout(() => this.showNotification = false, 3000);
+					this.ticker = '';
+					this.tickersNames = [];
+					return;
+				}
+				else
+				{
+					this.ticker = ticker;
+					this.addTicker();
+				}
+				this.tickersNames = [];
 			},
 			removeTicker(tick)
 			{
@@ -195,7 +228,7 @@ export default {
 				const max = Math.max(...this.graph);
 				const min = Math.min(...this.graph);
 				const diff = max - min;
-				return this.graph.map(val =>  5 + ((val - min) / diff) * 95);
+				return this.graph.map(val => 5 + ((val - min) / diff) * 95);
 			},
 			select(tick)
 			{
@@ -205,6 +238,3 @@ export default {
 		},
 }
 </script>
-
-<style src="./app.css">
-</style>
