@@ -27,7 +27,8 @@
 								@input="getTickersCoincidence()"
 							/>
 						</div>
-						<div v-if="Object.values(tickersNames).length" class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
+						<div v-if="Object.values(tickersNames).length"
+						     class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap">
 				            <span
 					            class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
 					            v-for="coincidence in tickersNames"
@@ -149,7 +150,6 @@
 </template>
 
 <script>
-
 export default {
 	name: 'App',
 	data()
@@ -163,8 +163,34 @@ export default {
 			showNotification: false,
 		}
 	},
+	mounted()
+	{
+		const tickerData = localStorage.getItem('criptonomicon-list');
+		if (tickerData) {
+			this.tickers = JSON.parse(tickerData);
+			this.tickers.forEach(ticker => {
+				this.subscribeToUpdates(ticker.name);
+			});
+		}
+	},
 	methods:
 		{
+			subscribeToUpdates(tickerName)
+			{
+				setInterval(async () =>
+				{
+					const response = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=e25e7ecea7cad5e56abf8a869298c3fc99dddca767e2bd5746787d88027e8562`);
+					const data = await response.json();
+
+					this.tickers.find(ticker => ticker.name === tickerName).price =
+						data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+
+					if (this.sel?.name === tickerName)
+					{
+						this.graph.push(data.USD);
+					}
+				}, 3000);
+			},
 			async getTickersCoincidence()
 			{
 				const response = await fetch(`https://min-api.cryptocompare.com/data/all/coinlist?summary=true`);
@@ -183,19 +209,8 @@ export default {
 				}
 
 				this.tickers.push(currentTicker);
-
-				setInterval(async () =>
-				{
-					const response = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=e25e7ecea7cad5e56abf8a869298c3fc99dddca767e2bd5746787d88027e8562`);
-					const data = await response.json();
-					this.tickers.find(ticker => ticker.name === currentTicker.name).price =
-						data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
-
-					if (this.sel?.name === currentTicker.name)
-					{
-						this.graph.push(data.USD);
-					}
-				}, 3000);
+				localStorage.setItem('criptonomicon-list', JSON.stringify(this.tickers));
+				this.subscribeToUpdates(currentTicker.name);
 
 				this.ticker = '';
 				this.tickersNames = [];
@@ -203,7 +218,7 @@ export default {
 			addCoincidenceTicker(ticker)
 			{
 
-				if(this.tickers.find(item => item.name === ticker))
+				if (this.tickers.find(item => item.name === ticker))
 				{
 					this.showNotification = true;
 					setTimeout(() => this.showNotification = false, 3000);
