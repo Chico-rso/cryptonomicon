@@ -4,8 +4,7 @@
 			<section>
 				<div class="flex">
 					<div class="max-w-xs">
-						<label for="wallet" class="block text-sm font-medium text-gray-700"
-						>Тикер</label
+						<label for="wallet" class="block text-sm font-medium text-gray-700">Тикер</label
 						>
 						<div class="mt-1 relative rounded-md shadow-md">
 							<input
