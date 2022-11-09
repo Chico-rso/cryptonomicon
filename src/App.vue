@@ -191,18 +191,6 @@ export default {
 			hasNextPage: true,
 		}
 	},
-	mounted()
-	{
-		const tickerData = localStorage.getItem('criptonomicon-list');
-		if (tickerData)
-		{
-			this.tickers = JSON.parse(tickerData);
-			this.tickers.forEach(ticker =>
-			{
-				this.subscribeToUpdates(ticker.name);
-			});
-		}
-	},
 	methods:
 		{
 			filtredTickers()
@@ -290,5 +278,40 @@ export default {
 				this.graph = [];
 			}
 		},
+	mounted()
+	{
+		const windowData = Object.fromEntries(new URL(window.location).searchParams.entries());
+
+		if(windowData.filter)
+		{
+			this.filter = windowData.filter;
+		}
+		if(windowData.page)
+		{
+			this.page = +windowData.page;
+		}
+
+		const tickerData = localStorage.getItem('criptonomicon-list');
+		if (tickerData)
+		{
+			this.tickers = JSON.parse(tickerData);
+			this.tickers.forEach(ticker =>
+			{
+				this.subscribeToUpdates(ticker.name);
+			});
+		}
+	},
+	watch:
+	{
+		filter()
+		{
+			this.page = 1;
+			window.history.pushState(null,  document.title,  `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
+		},
+		page()
+		{
+			window.history.pushState(null,  document.title,  `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
+		}
+	}
 }
 </script>
