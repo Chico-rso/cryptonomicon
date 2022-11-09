@@ -62,12 +62,37 @@
 					Добавить
 				</button>
 			</section>
+
 			<template v-if="tickers.length > 0">
+				<hr class="w-full border-t border-gray-600 my-4"/>
+				<div>
+					<button
+						class="ml-2 m-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+						@click="page = page - 1"
+						v-if="page > 1"
+					>
+						Назад
+					</button>
+					<button
+						class="m-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+						@click="page = page + 1"
+						v-if="hasNextPage"
+					>
+						Вперед
+					</button>
+					<div>
+						Фильтр:
+						<input
+							type="text"
+							v-model="filter"
+						>
+					</div>
+				</div>
 				<hr class="w-full border-t border-gray-600 my-4"/>
 				<dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
 					<div
 						class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
-						v-for="(tick) in tickers"
+						v-for="(tick) in filtredTickers()"
 						:key="tick.name"
 						@click="select(tick)"
 						:class="{'border-4': sel === tick}"
@@ -161,20 +186,33 @@ export default {
 			graph: [],
 			tickersNames: [],
 			showNotification: false,
+			page: 1,
+			filter: '',
+			hasNextPage: true,
 		}
 	},
 	mounted()
 	{
 		const tickerData = localStorage.getItem('criptonomicon-list');
-		if (tickerData) {
+		if (tickerData)
+		{
 			this.tickers = JSON.parse(tickerData);
-			this.tickers.forEach(ticker => {
+			this.tickers.forEach(ticker =>
+			{
 				this.subscribeToUpdates(ticker.name);
 			});
 		}
 	},
 	methods:
 		{
+			filtredTickers()
+			{
+				let start = (this.page - 1) * 6;
+				let end = this.page * 6 ;
+				const filtredTickers = this.tickers.filter(ticker => ticker.name.toLowerCase().includes(this.filter.toLowerCase()));
+				this.hasNextPage = filtredTickers.length > end;
+				return filtredTickers.slice(start, end);
+			},
 			subscribeToUpdates(tickerName)
 			{
 				setInterval(async () =>
@@ -183,7 +221,7 @@ export default {
 					const data = await response.json();
 
 					this.tickers.find(ticker => ticker.name === tickerName).price =
-						data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+						data.USD > 1 ? +data.USD.toFixed(2) : +data.USD.toPrecision(2);
 
 					if (this.sel?.name === tickerName)
 					{
@@ -214,6 +252,7 @@ export default {
 
 				this.ticker = '';
 				this.tickersNames = [];
+				this.filter = '';
 			},
 			addCoincidenceTicker(ticker)
 			{
@@ -236,6 +275,7 @@ export default {
 			removeTicker(tick)
 			{
 				this.tickers = this.tickers.filter(ticker => ticker !== tick);
+				localStorage.setItem('criptonomicon-list', JSON.stringify(this.tickers));
 			},
 			normalizeGraph()
 			{
