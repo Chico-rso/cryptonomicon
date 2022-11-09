@@ -92,7 +92,7 @@
 				<dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
 					<div
 						class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
-						v-for="(tick) in filtredTickers()"
+						v-for="(tick) in paginatedTickers"
 						:key="tick.name"
 						@click="select(tick)"
 						:class="{'border-4': sel === tick}"
@@ -135,7 +135,7 @@
 				</h3>
 				<div class="flex items-end border-gray-600 border-b border-l h-64">
 					<div class="bg-purple-800 border w-10"
-					     v-for="(val, idx) in normalizeGraph()"
+					     v-for="(val, idx) in normalizedGraph"
 					     :key="idx"
 					     :style="{height: val + '%'}"
 					></div>
@@ -147,8 +147,6 @@
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						xmlns:xlink="http://www.w3.org/1999/xlink"
-						xmlns:svgjs="http://svgjs.com/svgjs"
 						version="1.1"
 						width="30"
 						height="30"
@@ -175,32 +173,68 @@
 </template>
 
 <script>
+// [] 1. одинаковый код в watch / критичность 3
+// [] 2. при удалении остается подписка на загрузку тикера / критичность 5
+// [] 3. количество запросов / критичность 4
+// [] 4. запросы напрямую внутри компонента (???) / критичность 5
+// [] 5. обработка ошибок API/ критичность 5
+// [] 6. наличие в состоянии зависымых данных / критичность 5+
+// [] 7. график ужасно выглядит если много цен / критичность 2
+// [] 8. при удалении тикера не меняется локалсторож / критичность 4
+// [] 9. localStorage и анонимные вкладки / критичность 3
+// [] 10. магические строки и числа (URL, 3 000ms задержки , ключ локалстораджа, количество на странице) / критичность 1
 export default {
-	name: 'App',
+	name: "App",
 	data()
 	{
 		return {
-			ticker: null,
+			filter: "",
+			ticker: "",
+
 			tickers: [],
 			sel: null,
-			graph: [],
 			tickersNames: [],
-			showNotification: false,
+
+			graph: [],
+
 			page: 1,
-			filter: '',
-			hasNextPage: true,
-		}
+
+			showNotification: false,
+		};
 	},
-	methods:
+	computed:
 		{
+			startIndex()
+			{
+				return (this.page - 1) * 6;
+			},
+			endIndex()
+			{
+				return this.page * 6;
+			},
 			filtredTickers()
 			{
-				let start = (this.page - 1) * 6;
-				let end = this.page * 6 ;
-				const filtredTickers = this.tickers.filter(ticker => ticker.name.toLowerCase().includes(this.filter.toLowerCase()));
-				this.hasNextPage = filtredTickers.length > end;
-				return filtredTickers.slice(start, end);
+				return this.tickers.filter(ticker => ticker.name.toLowerCase()
+				.includes(this.filter.toLowerCase()));
 			},
+			paginatedTickers()
+			{
+				return this.filtredTickers.slice(this.startIndex, this.endIndex);
+			},
+			hasNextPage()
+			{
+				return this.filtredTickers.length > this.endIndex;
+			},
+			normalizedGraph()
+			{
+				const max = Math.max(...this.graph);
+				const min = Math.min(...this.graph);
+				const diff = max - min;
+				return this.graph.map(val => 5 + ((val - min) / diff) * 95);
+			},
+		},
+	methods:
+		{
 			subscribeToUpdates(tickerName)
 			{
 				setInterval(async () =>
@@ -231,16 +265,16 @@ export default {
 			{
 				const currentTicker = {
 					name: this.ticker,
-					price: '',
-				}
+					price: "",
+				};
 
 				this.tickers.push(currentTicker);
-				localStorage.setItem('criptonomicon-list', JSON.stringify(this.tickers));
+				localStorage.setItem("criptonomicon-list", JSON.stringify(this.tickers));
 				this.subscribeToUpdates(currentTicker.name);
 
-				this.ticker = '';
+				this.ticker = "";
 				this.tickersNames = [];
-				this.filter = '';
+				this.filter = "";
 			},
 			addCoincidenceTicker(ticker)
 			{
@@ -249,7 +283,7 @@ export default {
 				{
 					this.showNotification = true;
 					setTimeout(() => this.showNotification = false, 3000);
-					this.ticker = '';
+					this.ticker = "";
 					this.tickersNames = [];
 					return;
 				}
@@ -263,35 +297,28 @@ export default {
 			removeTicker(tick)
 			{
 				this.tickers = this.tickers.filter(ticker => ticker !== tick);
-				localStorage.setItem('criptonomicon-list', JSON.stringify(this.tickers));
-			},
-			normalizeGraph()
-			{
-				const max = Math.max(...this.graph);
-				const min = Math.min(...this.graph);
-				const diff = max - min;
-				return this.graph.map(val => 5 + ((val - min) / diff) * 95);
+				localStorage.setItem("criptonomicon-list", JSON.stringify(this.tickers));
 			},
 			select(tick)
 			{
 				this.sel = tick;
 				this.graph = [];
-			}
+			},
 		},
 	mounted()
 	{
 		const windowData = Object.fromEntries(new URL(window.location).searchParams.entries());
 
-		if(windowData.filter)
+		if (windowData.filter)
 		{
 			this.filter = windowData.filter;
 		}
-		if(windowData.page)
+		if (windowData.page)
 		{
 			this.page = +windowData.page;
 		}
 
-		const tickerData = localStorage.getItem('criptonomicon-list');
+		const tickerData = localStorage.getItem("criptonomicon-list");
 		if (tickerData)
 		{
 			this.tickers = JSON.parse(tickerData);
@@ -302,16 +329,16 @@ export default {
 		}
 	},
 	watch:
-	{
-		filter()
 		{
-			this.page = 1;
-			window.history.pushState(null,  document.title,  `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
+			filter()
+			{
+				this.page = 1;
+				window.history.pushState(null, document.title, `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
+			},
+			page()
+			{
+				window.history.pushState(null, document.title, `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
+			},
 		},
-		page()
-		{
-			window.history.pushState(null,  document.title,  `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
-		}
-	}
-}
+};
 </script>
