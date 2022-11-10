@@ -95,7 +95,7 @@
 						v-for="(tick) in paginatedTickers"
 						:key="tick.name"
 						@click="select(tick)"
-						:class="{'border-4': sel === tick}"
+						:class="{'border-4': selectedTicker === tick}"
 					>
 						<div class="px-4 py-5 sm:p-6 text-center">
 							<dt class="text-sm font-medium text-gray-500 truncate">
@@ -129,9 +129,9 @@
 				</dl>
 				<hr class="w-full border-t border-gray-600 my-4"/>
 			</template>
-			<section v-if="sel" class="relative">
+			<section v-if="selectedTicker" class="relative">
 				<h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-					{{ sel.name }} - USD
+					{{ selectedTicker.name }} - USD
 				</h3>
 				<div class="flex items-end border-gray-600 border-b border-l h-64">
 					<div class="bg-purple-800 border w-10"
@@ -143,7 +143,7 @@
 				<button
 					type="button"
 					class="absolute top-0 right-0"
-					@click="sel = null"
+					@click="selectedTicker = null"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -183,6 +183,10 @@
 // [] 8. при удалении тикера не меняется локалсторож / критичность 4
 // [] 9. localStorage и анонимные вкладки / критичность 3
 // [] 10. магические строки и числа (URL, 3 000ms задержки , ключ локалстораджа, количество на странице) / критичность 1
+
+//параралельно
+// [x] 1. График сломан если везде одинаковые значения
+// [] 2. При удалении тикерв график с выбором тикера остается пустым
 export default {
 	name: "App",
 	data()
@@ -192,7 +196,7 @@ export default {
 			ticker: "",
 
 			tickers: [],
-			sel: null,
+			selectedTicker: null,
 			tickersNames: [],
 
 			graph: [],
@@ -230,7 +234,18 @@ export default {
 				const max = Math.max(...this.graph);
 				const min = Math.min(...this.graph);
 				const diff = max - min;
+				if (max === min)
+				{
+					return this.graph.map(() => 50);
+				}
 				return this.graph.map(val => 5 + ((val - min) / diff) * 95);
+			},
+			pageStateOption()
+			{
+				return {
+					"page": this.page,
+					"filter": this.filter,
+				};
 			},
 		},
 	methods:
@@ -245,7 +260,7 @@ export default {
 					this.tickers.find(ticker => ticker.name === tickerName).price =
 						data.USD > 1 ? +data.USD.toFixed(2) : +data.USD.toPrecision(2);
 
-					if (this.sel?.name === tickerName)
+					if (this.selectedTicker?.name === tickerName)
 					{
 						this.graph.push(data.USD);
 					}
@@ -269,10 +284,9 @@ export default {
 				};
 
 				this.tickers.push(currentTicker);
-				localStorage.setItem("criptonomicon-list", JSON.stringify(this.tickers));
 				this.subscribeToUpdates(currentTicker.name);
 
-				this.ticker = "";
+				this.ticker = [...this.tickers, currentTicker];
 				this.tickersNames = [];
 				this.filter = "";
 			},
@@ -297,11 +311,15 @@ export default {
 			removeTicker(tick)
 			{
 				this.tickers = this.tickers.filter(ticker => ticker !== tick);
-				localStorage.setItem("criptonomicon-list", JSON.stringify(this.tickers));
+				if (this.selectedTicker === tick)
+				{
+					this.selectedTicker = null;
+					this.graph = [];
+				}
 			},
 			select(tick)
 			{
-				this.sel = tick;
+				this.selectedTicker = tick;
 				this.graph = [];
 			},
 		},
@@ -333,11 +351,25 @@ export default {
 			filter()
 			{
 				this.page = 1;
-				window.history.pushState(null, document.title, `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
 			},
-			page()
+			paginatedTickers()
 			{
-				window.history.pushState(null, document.title, `${window.location.pathname}?filter=${this.filter}&page=${this.page}`);
+				if (this.paginatedTickers.length === 0 && this.page > 1)
+				{
+					this.page--;
+				}
+			},
+			selectedTicker()
+			{
+				this.graph = [];
+			},
+			tickers()
+			{
+				localStorage.setItem("criptonomicon-list", JSON.stringify(this.tickers));
+			},
+			pageStateOption(value)
+			{
+				window.history.pushState(null, document.title, `${window.location.pathname}?filter=${value.filter}&page=${value.page}`);
 			},
 		},
 };
