@@ -277,19 +277,20 @@ export default {
 					return item.Symbol.toLowerCase().includes(this.ticker.toLowerCase().trim().slice(0, 3));
 				}).slice(0, 4);
 			},
-			async addTicker()
+			addTicker()
 			{
 				const currentTicker = {
 					name: this.ticker,
 					price: "",
 				};
 
-				this.tickers.push(currentTicker);
+				this.tickers = [...this.tickers, currentTicker];
+				this.filter = "";
 				this.subscribeToUpdates(currentTicker.name);
 
 				this.ticker = "";
 				this.tickersNames = [];
-				this.filter = "";
+
 			},
 			addCoincidenceTicker(ticker)
 			{
