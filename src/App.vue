@@ -265,6 +265,7 @@ export default {
 						this.graph.push(data.USD);
 					}
 				}, 3000);
+				this.ticker = "";
 			},
 			async getTickersCoincidence()
 			{
@@ -323,7 +324,7 @@ export default {
 				this.graph = [];
 			},
 		},
-	mounted()
+	created()
 	{
 		const windowData = Object.fromEntries(new URL(window.location).searchParams.entries());
 
@@ -336,10 +337,10 @@ export default {
 			this.page = +windowData.page;
 		}
 
-		const tickerData = localStorage.getItem("criptonomicon-list");
-		if (tickerData)
+		const tickersData = localStorage.getItem("criptonomicon-list");
+		if (tickersData)
 		{
-			this.tickers = JSON.parse(tickerData);
+			this.tickers = JSON.parse(tickersData);
 			this.tickers.forEach(ticker =>
 			{
 				this.subscribeToUpdates(ticker.name);
