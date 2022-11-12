@@ -287,7 +287,7 @@ export default {
 				this.tickers.push(currentTicker);
 				this.subscribeToUpdates(currentTicker.name);
 
-				this.ticker = [...this.tickers, currentTicker];
+				this.ticker = "";
 				this.tickersNames = [];
 				this.filter = "";
 			},
