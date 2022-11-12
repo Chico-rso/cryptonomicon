@@ -187,6 +187,8 @@
 //параралельно
 // [x] 1. График сломан если везде одинаковые значения
 // [] 2. При удалении тикерв график с выбором тикера остается пустым
+
+import {loadTickers} from './api.js';
 export default {
 	name: "App",
 	data()
@@ -240,7 +242,7 @@ export default {
 				}
 				return this.graph.map(val => 5 + ((val - min) / diff) * 95);
 			},
-			pageStateOption()
+				pageStateOption()
 			{
 				return {
 					"page": this.page,
@@ -254,15 +256,13 @@ export default {
 			{
 				setInterval(async () =>
 				{
-					const response = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=e25e7ecea7cad5e56abf8a869298c3fc99dddca767e2bd5746787d88027e8562`);
-					const data = await response.json();
-
+					const exchangeData = await loadTickers(tickerName);
 					this.tickers.find(ticker => ticker.name === tickerName).price =
-						data.USD > 1 ? +data.USD.toFixed(2) : +data.USD.toPrecision(2);
+						exchangeData.USD > 1 ? +exchangeData.USD.toFixed(2) : +exchangeData.USD.toPrecision(2);
 
 					if (this.selectedTicker?.name === tickerName)
 					{
-						this.graph.push(data.USD);
+						this.graph.push(exchangeData.USD);
 					}
 				}, 3000);
 				this.ticker = "";
@@ -290,7 +290,6 @@ export default {
 
 				this.ticker = "";
 				this.tickersNames = [];
-
 			},
 			addCoincidenceTicker(ticker)
 			{
